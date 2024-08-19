@@ -5,10 +5,10 @@ import '@tensorflow/tfjs-backend-webgl';
 import { useEffect, useRef, useState } from 'react';
 import Webcam from 'react-webcam';
 
-const StartSitUps = () => {
+const StartPushUp = () => {
     const webcamRef = useRef(null);
     const canvasRef = useRef(null);
-    const [sitUpCount, setSitUpCount] = useState(0);
+    const [PushUpCount, setPushUpCount] = useState(0);
     const positionRef = useRef('up');
     const [debugInfo, setDebugInfo] = useState("");
     const [position, setPosition] = useState("up");
@@ -48,7 +48,7 @@ const StartSitUps = () => {
                     const poses = await detector.estimatePoses(video);
                     if (poses.length > 0) {
                         drawPose(poses[0]);
-                        countSitUps(poses[0]);
+                        countPushUps(poses[0]);
                     }
                 } catch (error) {
                     console.error(error);
@@ -87,21 +87,21 @@ const StartSitUps = () => {
                 }
             });
             const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
-            const leftHip = pose.keypoints.find(kp => kp.name === 'left_hip');
-            const leftKnee = pose.keypoints.find(kp => kp.name === 'left_knee');
+            const left_wrist = pose.keypoints.find(kp => kp.name === 'left_wrist');
+            const left_elbow = pose.keypoints.find(kp => kp.name === 'left_elbow');
 
-            if (leftShoulder && leftHip && leftKnee &&
-                leftShoulder.score > 0.5 && leftHip.score > 0.5 && leftKnee.score > 0.5) {
+            if (leftShoulder && left_wrist && left_elbow &&
+                leftShoulder.score > 0.5 && left_wrist.score > 0.5 && left_elbow.score > 0.5) {
 
-                const hipAngle = (
-                    Math.atan2(leftShoulder.y - leftHip.y, leftShoulder.x - leftHip.x) -
-                    Math.atan2(leftKnee.y - leftHip.y, leftKnee.x - leftHip.x)
+                const elbowAngle = Math.abs(
+                    Math.atan2(leftShoulder.y - left_elbow.y, leftShoulder.x - left_elbow.x) -
+                    Math.atan2(left_elbow.y - left_wrist.y, left_elbow.x - left_wrist.x)
                 ) * (180 / Math.PI);
 
                 // Draw the hip angle near the left hip keypoint
                 ctx.font = '16px Arial';
                 ctx.fillStyle = 'yellow';
-                ctx.fillText(`Hip Angle: ${hipAngle.toFixed(2)}`, leftHip.x + 10, leftHip.y - 10);
+                ctx.fillText(`Hip Angle: ${elbowAngle.toFixed(2)}`, left_elbow.x + 10, left_elbow.y - 10);
             }
         };
         
@@ -147,35 +147,35 @@ const StartSitUps = () => {
     //         if (intervalId) clearInterval(intervalId);
     //     };
     // }, []);
-    const countSitUps = (pose) => {
+    const countPushUps = (pose) => {
         const leftShoulder = pose.keypoints.find(kp => kp.name === 'left_shoulder');
-        const leftHip = pose.keypoints.find(kp => kp.name === 'left_hip');
-        const leftKnee = pose.keypoints.find(kp => kp.name === 'left_knee');
-    
-        if (leftShoulder && leftHip && leftKnee &&
-            leftShoulder.score > 0.5 && leftHip.score > 0.5 && leftKnee.score > 0.5) {
-            
-            const hipAngle = (
-                Math.atan2(leftShoulder.y - leftHip.y, leftShoulder.x - leftHip.x) -
-                Math.atan2(leftKnee.y - leftHip.y, leftKnee.x - leftHip.x)
-            ) * (180 / Math.PI);
+            const left_wrist = pose.keypoints.find(kp => kp.name === 'left_wrist');
+            const left_elbow = pose.keypoints.find(kp => kp.name === 'left_elbow');
+
+            if (leftShoulder && left_wrist && left_elbow &&
+                leftShoulder.score > 0.5 && left_wrist.score > 0.5 && left_elbow.score > 0.5) {
+
+                const elbowAngle = (
+                    Math.atan2(leftShoulder.y - left_elbow.y, leftShoulder.x - left_elbow.x) -
+                    Math.atan2(left_elbow.y - left_wrist.y, left_elbow.x - left_wrist.x)
+                ) * (180 / Math.PI);
 
            
     
-            const sitUpThreshold = 60; // Adjust this threshold as needed
+            const sitUpThreshold = -10; // Adjust this threshold as needed
             const timeBetweenCounts = 1000; // Time threshold
     
-            setDebugInfo(`Hip Angle: ${hipAngle.toFixed(2)}, Position: ${positionRef.current}`);
+            setDebugInfo(`Hip Angle: ${elbowAngle.toFixed(2)}, Position: ${positionRef.current}`);
     
-            if (positionRef.current === 'down' && hipAngle <= sitUpThreshold) {
+            if (positionRef.current === 'down' && elbowAngle >= sitUpThreshold) {
                 positionRef.current = 'up';
                 const now = Date.now();
                 if (now - lastCountTimeRef.current > timeBetweenCounts) {
-                    setSitUpCount(prevCount => prevCount + 1);
+                    setPushUpCount(prevCount => prevCount + 1);
                     lastCountTimeRef.current = now;
-                    setDebugInfo(prev => `${prev}, Sit-up counted!`);
+                    setDebugInfo(prev => `${prev}, Push-up counted!`);
                 }
-            } else if (hipAngle > 80) {
+            } else if (elbowAngle < -80) {
                 positionRef.current = 'down';
                 setDebugInfo(prev => `${prev}, Moving down`);
             }
@@ -201,7 +201,7 @@ const StartSitUps = () => {
                 className="absolute top-0 left-0 w-full h-full"
             />
             <div className="mt-4 text-xl font-bold">
-                Sit-up Count: {sitUpCount}
+                Sit-up Count: {PushUpCount}
             </div>
             <div className="mt-2 text-sm">
                 Debug Info: {debugInfo}
@@ -212,4 +212,4 @@ const StartSitUps = () => {
     );
 }
 
-export default StartSitUps;
+export default StartPushUp;
